@@ -1,0 +1,45 @@
+name: Publish Mine Escape
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Extract complete solution
+        run: unzip -q MineEscape-Demo.zip -d source
+      - name: Build console
+        run: dotnet build source/MineEscape.sln -c Release
+      - name: Publish browser game
+        run: dotnet publish source/WebApp/MineEscape.Web.csproj -c Release -o "$RUNNER_TEMP/mine-escape"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/mine-escape/wwwroot
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
